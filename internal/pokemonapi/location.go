@@ -4,34 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"fmt"
-	"time"
-	"github.com/voylento/pokedexcli/internal/pokecache"
 )
-
-type LocationAreaResponse struct {
-	Count 		int									`json:"count"`
-	Next			interface{} 				`json:"next"`
-	Previous	interface{}					`json:"previous"`
-	Results		[]LocationAreaItem 	`json:"results"`
-}
-
-type LocationAreaItem struct {
-	Name		string	`json:"name"`
-	URL			string	`json:"url"`
-}
-
-var cache *pokecache.Cache
-
-func init() {
-	expireTime := 20 * time.Second
-	cache = pokecache.NewCache(expireTime)
-}
 
 func bytesToLocationResponse(data []byte) (*LocationAreaResponse, error) {
 	var locationResponse LocationAreaResponse
 	err := json.Unmarshal(data, &locationResponse)
 	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling response from cache: %w", err)
+		return nil, fmt.Errorf("Error unmarshalling response from PokeCache: %w", err)
 	}
 	return &locationResponse, nil
 }
@@ -49,7 +28,7 @@ func GetLocationAreas(url string) (*LocationAreaResponse, error) {
 		return nil, fmt.Errorf("location-area url not provided %d", 1)
 	}
 
-	if data, ok := cache.Get(url); ok {
+	if data, ok := PokeCache.Get(url); ok {
 		return bytesToLocationResponse(data)
 	}
 
@@ -73,7 +52,7 @@ func GetLocationAreas(url string) (*LocationAreaResponse, error) {
 	bytes, err := locationResponseToBytes(&locationResponse)
 	if err != nil {
 	} else {
-		cache.Add(url, bytes)
+		PokeCache.Add(url, bytes)
 	}
 	
 	return &locationResponse, nil

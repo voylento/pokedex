@@ -17,12 +17,14 @@ type cliCommand struct {
 	name        string
 	description string
 	config	    *config
-	callback    func() error
+	callback    func(args []string) error
 }
 
 var commandMap map[string]cliCommand
 
-func init() {
+const locationAreaEndpoint = "https://pokeapi.co/api/v2/location-area/"
+
+func initializeApp() {
 	commandMap = map[string]cliCommand{
 		"exit": {
 			name:        "exit",
@@ -40,8 +42,8 @@ func init() {
 			name:        "map",
 			description: "Displays location names in Pokemon world, 20 at a time, going forward",
 			config: 		 &config{
-				next:		"https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
-				prev:		"",
+				next:		   "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
+				prev:		   "",
 			},
 			callback:    commandMapList,
 		},
@@ -51,22 +53,27 @@ func init() {
 			config: 		 &config{},
 			callback:    commandMapbList,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Displays all the pokemon in an area",
+			config: 		 &config{},
+			callback:    commandExplore,
+		},
 	}
 }
 
 func main() {
+	initializeApp()
+	pokemonapi.InitializePackage()
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan() 
 		userText := scanner.Text()
 		cleanText := cleanInput(userText)
-		if len(cleanText) == 0 {
-			continue
-		}
 		command, ok := commandMap[cleanText[0]]
 		if ok {
-			err := command.callback()
+			err := command.callback(cleanText)
 			if err != nil {
 				fmt.Printf("error: %v\n", err)
 			}
@@ -76,13 +83,13 @@ func main() {
 	}
 }
 
-func commandExit() error {
+func commandExit(_ []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(_ []string) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println()
@@ -117,7 +124,7 @@ func displayLocationAreas(cmd cliCommand, url string) error {
 	return nil
 }
 
-func commandMapList() error {
+func commandMapList(_ []string) error {
 	cmd := commandMap["map"]
 
 	if cmd.config == nil || cmd.config.next == "" {
@@ -128,7 +135,7 @@ func commandMapList() error {
 	return displayLocationAreas(cmd, cmd.config.next)
 }
 
-func commandMapbList() error {
+func commandMapbList(_ []string) error {
 	cmd := commandMap["map"]
 
 	if cmd.config == nil || cmd.config.prev == "" {
@@ -137,6 +144,44 @@ func commandMapbList() error {
 	}
 
 	return displayLocationAreas(cmd, cmd.config.prev)
+}
+
+func getPokemonNames(resp *pokemonapi.ExploreResponse) []string {
+	var pokemonNames []string
+
+	for _, encounter := range resp.PokemonEncounters {
+		pokemonNames = append(pokemonNames, encounter.Pokemon.Name)
+	}
+
+	return pokemonNames
+}
+
+func commandExplore(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("explore command requires area name as argument")
+	}
+
+	fmt.Printf("Exploring %s...\n", args[1])
+
+	exploreUrl := locationAreaEndpoint + "/" + args[1]
+	
+	exploreResponse, err := pokemonapi.GetExploreArea(exploreUrl)
+	if err != nil {
+		return fmt.Errorf("Error fetching area information: %w", err)
+	}
+
+	pokemonNames := getPokemonNames(exploreResponse)
+	
+	if len(pokemonNames) > 0 {
+		fmt.Println("Found pokemon:")
+		for _, name := range pokemonNames {
+			fmt.Printf("- %s\n", name)
+		}
+	} else {
+		fmt.Println("No pokemon found")
+	}
+
+	return nil
 }
 
 func cleanInput(text string) []string {
