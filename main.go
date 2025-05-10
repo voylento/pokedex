@@ -40,7 +40,7 @@ func init() {
 			name:        "map",
 			description: "Displays location names in Pokemon world, 20 at a time, going forward",
 			config: 		 &config{
-				next:		"https://pokeapi.co/api/v2/location-area/",
+				next:		"https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
 				prev:		"",
 			},
 			callback:    commandMapList,
@@ -48,10 +48,7 @@ func init() {
 		"mapb": {
 			name:        "mapb",
 			description: "Displays location names in Pokemon world, 20 at a time, going backward",
-			config: 		 &config{
-				next:		"",
-				prev:		"",
-			},
+			config: 		 &config{},
 			callback:    commandMapbList,
 		},
 	}
@@ -124,10 +121,10 @@ func commandMapList() error {
 	cmd := commandMap["map"]
 
 	if cmd.config == nil || cmd.config.next == "" {
-		fmt.Println("No locations to display.")
+		fmt.Println("No locations available")
 		return nil
 	}
-	
+
 	return displayLocationAreas(cmd, cmd.config.next)
 }
 
@@ -135,10 +132,10 @@ func commandMapbList() error {
 	cmd := commandMap["map"]
 
 	if cmd.config == nil || cmd.config.prev == "" {
-		fmt.Println("No previous locations.")
+		fmt.Println("No previous locations available")
 		return nil
 	}
-	
+
 	return displayLocationAreas(cmd, cmd.config.prev)
 }
 
