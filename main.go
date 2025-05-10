@@ -5,6 +5,8 @@ import (
 	"strings"
 	"bufio"
 	"os"
+	"math"
+	"math/rand/v2"
 	"github.com/voylento/pokedexcli/internal/pokemonapi"
 )
 
@@ -21,8 +23,10 @@ type cliCommand struct {
 }
 
 var commandMap map[string]cliCommand
+var pokedex map[string]pokemonapi.Pokemon
 
 const locationAreaEndpoint = "https://pokeapi.co/api/v2/location-area/"
+const pokemonEndpoint = "https://pokeapi.co/api/v2/pokemon/"
 
 func initializeApp() {
 	commandMap = map[string]cliCommand{
@@ -59,7 +63,21 @@ func initializeApp() {
 			config: 		 &config{},
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Attemtps to catch a pokemon",
+			config: 		 &config{},
+			callback:    commandCatchPokemon,
+		},
+		"list": {
+			name:        "list",
+			description: "Lists all the pokemon captured in the pokedex",
+			config: 		 &config{},
+			callback:    commandListPokedex,
+		},
 	}
+
+	pokedex = map[string]pokemonapi.Pokemon{}
 }
 
 func main() {
@@ -163,7 +181,7 @@ func commandExplore(args []string) error {
 
 	fmt.Printf("Exploring %s...\n", args[1])
 
-	exploreUrl := locationAreaEndpoint + "/" + args[1]
+	exploreUrl := locationAreaEndpoint + args[1]
 	
 	exploreResponse, err := pokemonapi.GetExploreArea(exploreUrl)
 	if err != nil {
@@ -179,6 +197,60 @@ func commandExplore(args []string) error {
 		}
 	} else {
 		fmt.Println("No pokemon found")
+	}
+
+	return nil
+}
+
+func calculateCaptureChance(experience int) float64 {
+	baseChance := .9
+	decayFactor := .01
+	successChance := baseChance * math.Exp(-decayFactor*float64(experience))
+	minChance := 0.1
+	
+	if successChance < minChance {
+		successChance = minChance
+	}
+
+	return successChance
+}
+
+func attemptCapture(experience int) bool {
+	successChance := calculateCaptureChance(experience)
+	randomValue := rand.Float64()
+
+	return randomValue > successChance
+}
+
+func commandCatchPokemon(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("catch command requires pokemon name as argument")
+	}
+
+	pokemonUrl := pokemonEndpoint + args[1]
+
+	fmt.Printf("Throwing a Pokeball at %s...\n", args[1])
+
+	pokemon, err := pokemonapi.GetPokemon(pokemonUrl)
+	if err != nil {
+		return fmt.Errorf("Error fetching pokemon: %w", err)
+	}
+
+	captured := attemptCapture(pokemon.BaseExperience)
+	if captured {
+		fmt.Printf("%s was caught!\n", pokemon.Name)
+		pokedex[pokemon.Name] = *pokemon
+	} else {
+		fmt.Printf("%s escaped!\n", pokemon.Name)
+	}
+
+	return nil
+}
+
+func commandListPokedex(_ []string) error {
+	fmt.Println("Here are the pokemon in the pokedex...")
+	for _, val := range pokedex {
+		fmt.Printf("- %s\n", val.Name)
 	}
 
 	return nil
