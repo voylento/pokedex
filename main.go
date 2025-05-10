@@ -69,8 +69,14 @@ func initializeApp() {
 			config: 		 &config{},
 			callback:    commandCatchPokemon,
 		},
-		"list": {
-			name:        "list",
+		"inspect": {
+			name:        "inspect",
+			description: "Inspect details of a captured pokemon",
+			config: 		 &config{},
+			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
 			description: "Lists all the pokemon captured in the pokedex",
 			config: 		 &config{},
 			callback:    commandListPokedex,
@@ -219,7 +225,7 @@ func attemptCapture(experience int) bool {
 	successChance := calculateCaptureChance(experience)
 	randomValue := rand.Float64()
 
-	return randomValue > successChance
+	return randomValue < successChance
 }
 
 func commandCatchPokemon(args []string) error {
@@ -248,9 +254,33 @@ func commandCatchPokemon(args []string) error {
 }
 
 func commandListPokedex(_ []string) error {
-	fmt.Println("Here are the pokemon in the pokedex...")
+	fmt.Println("Your Pokedex:")
 	for _, val := range pokedex {
 		fmt.Printf("- %s\n", val.Name)
+	}
+
+	return nil
+}
+
+func commandInspect(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("inspect command requires pokemon name as argument")
+	}
+
+	if pokemon, ok := pokedex[args[1]]; !ok {
+		fmt.Println("you have not caught that pokemoh")
+	} else {
+		fmt.Printf("Name: %s\n", pokemon.Name)
+		fmt.Printf("Height: %d\n", pokemon.Height)
+		fmt.Printf("Weight: %d\n", pokemon.Weight)
+		fmt.Println("Stats:")
+		for _, stat := range pokemon.Stats {
+			fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+		}
+		fmt.Println("Types:")
+		for _, pokeType := range pokemon.Types {
+			fmt.Printf("  -%s\n", pokeType.Type.Name)
+		}
 	}
 
 	return nil
